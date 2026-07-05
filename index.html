@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCTNS Data Entry Form</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #0d1b2a;
+    color: #fff;
+    min-height: 100vh;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .container { width: 100%; max-width: 480px; }
+  h1 { font-size: 20px; text-align: center; color: #ffb703; margin-bottom: 4px; }
+  .subtitle { text-align: center; font-size: 13px; color: #aaa; margin-bottom: 18px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #3a4a5e;
+    background: #16263a; color: #aaa; font-size: 13px; cursor: pointer; text-align: center;
+  }
+  .tab-btn.active { background: #ffb703; color: #0d1b2a; font-weight: 600; border-color: #ffb703; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .form-card { background: #1b2a3d; border-radius: 14px; padding: 22px; }
+  label { display: block; font-size: 14px; margin-bottom: 6px; margin-top: 16px; color: #e0e0e0; }
+  label .required { color: #ff5252; }
+  input, select {
+    width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid #3a4a5e;
+    background: #0d1b2a; color: #fff; font-size: 15px;
+  }
+  input:focus, select:focus { outline: none; border-color: #ffb703; }
+  input.input-invalid { border-color: #ff5252 !important; }
+  small.hint { color: #888; font-size: 11px; display: block; margin-top: 4px; }
+  .error-text { color: #ff5252; font-size: 12px; margin-top: 4px; display: none; }
+
+  .btn {
+    width: 100%; margin-top: 22px; padding: 15px; border: none; border-radius: 10px;
+    background: #2e7d32; color: white; font-size: 16px; font-weight: 600; cursor: pointer;
+  }
+  .btn.secondary { background: #1565c0; }
+  .btn:disabled { background: #555; cursor: not-allowed; }
+
+  .message {
+    margin-top: 16px; padding: 14px; border-radius: 10px; text-align: center; font-size: 14px; display: none;
+  }
+  .message.success { background: #1b3a1f; color: #69f0ae; border: 1px solid #2e7d32; }
+  .message.failure { background: #3a1b1b; color: #ff8a80; border: 1px solid #b71c1c; }
+
+  .current-data {
+    margin-top: 18px; padding: 14px; border-radius: 10px; background: #0d1b2a;
+    border: 1px solid #3a4a5e; font-size: 13px; display: none;
+  }
+  .current-data div { padding: 4px 0; color: #ccc; }
+  .current-data b { color: #ffb703; }
+
+  .checkbox-row { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+  .checkbox-row input[type="checkbox"] { width: auto; }
+  .checkbox-row label { margin: 0; }
+
+  #updateFieldsSection { display: none; }
+
+  footer { text-align: center; margin-top: 20px; font-size: 11px; color: #555; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📋 CCTNS Data Entry Form</h1>
+  <div class="subtitle">Muzaffarnagar District</div>
+
+  <div class="tabs">
+    <div class="tab-btn active" id="tabAddBtn" onclick="switchTab('add')">➕ Naya Mukadma</div>
+    <div class="tab-btn" id="tabUpdateBtn" onclick="switchTab('update')">✏️ Mukadma Update Karein</div>
+  </div>
+
+  <!-- ===================== TAB 1: NAYA MUKADMA ===================== -->
+  <div class="tab-content active" id="tabAdd">
+    <div class="form-card">
+      <form id="addForm" autocomplete="off">
+        <label>थाना का नाम (PS Name) <span class="required">*</span></label>
+        <select id="add_ps_name" name="ps_name" required></select>
+
+        <label>विवेचक अधिकारी का नाम (IO Name — English में) <span class="required">*</span></label>
+        <input type="text" id="add_io_name" name="io_name" required placeholder="e.g. Ankur Sharma">
+        <small class="hint">कृपया केवल अंग्रेज़ी अक्षरों में लिखें</small>
+        <span class="error-text" id="addIoNameError">❌ कृपया केवल अंग्रेज़ी में लिखें (हिंदी/अन्य भाषा मान्य नहीं)</span>
+
+        <label>मुकदमा अपराध संख्या (FIR No.) <span class="required">*</span></label>
+        <input type="text" id="add_fir_no" name="fir_no" required placeholder="जैसे: 55/2026">
+        <small class="hint">फॉर्मेट: संख्या/वर्ष — उदाहरण: 182/2026</small>
+        <span class="error-text" id="addFirNoError">❌ सही फॉर्मेट में लिखें: संख्या/वर्ष (उदाहरण: 182/2026)</span>
+
+        <label>पंजीकरण तिथि (FIR Date) <span class="required">*</span></label>
+        <input type="date" id="add_fir_date_picker" required>
+        <input type="hidden" id="add_fir_date" name="fir_date">
+        <small class="hint">Calendar se select karein</small>
+
+        <label>विवेचना प्रकार (Investigation Type) <span class="required">*</span></label>
+        <select id="add_inv_type" name="inv_type" required>
+          <option value="" disabled selected>चुनें...</option>
+          <option value="60">60 दिवसीय</option>
+          <option value="90">90 दिवसीय</option>
+        </select>
+
+        <label>मोबाइल नंबर (IO Mobile) <span class="required">*</span></label>
+        <input type="tel" id="add_mobile" name="mobile" required maxlength="10" placeholder="10 अंक का नंबर">
+        <small class="hint">10 अंक, 6-9 से शुरू</small>
+        <span class="error-text" id="addMobileError">कृपया सही 10 अंक का मोबाइल नंबर डालें</span>
+
+        <button type="submit" class="btn" id="addSubmitBtn">✅ Submit Entry</button>
+        <div class="message success" id="addSuccessMsg">✅ Data safaltapoorvak save ho gaya!</div>
+        <div class="message failure" id="addFailureMsg"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== TAB 2: UPDATE MUKADMA ===================== -->
+  <div class="tab-content" id="tabUpdate">
+    <div class="form-card">
+      <label>थाना का नाम (PS Name) <span class="required">*</span></label>
+      <select id="search_ps_name" required></select>
+
+      <label>मुकदमा अपराध संख्या (FIR No.) <span class="required">*</span></label>
+      <input type="text" id="search_fir_no" required placeholder="जैसे: 55/2026">
+      <span class="error-text" id="searchFirNoError">❌ सही फॉर्मेट में लिखें: संख्या/वर्ष (उदाहरण: 182/2026)</span>
+
+      <button type="button" class="btn secondary" id="searchBtn" onclick="searchRecord()">🔍 Dhundo</button>
+      <div class="message failure" id="searchFailureMsg"></div>
+
+      <div class="current-data" id="currentDataBox">
+        <div><b>वर्तमान जानकारी:</b></div>
+        <div>विवेचक: <span id="cd_io_name"></span></div>
+        <div>मोबाइल: <span id="cd_mobile"></span></div>
+        <div>पंजीकरण तिथि: <span id="cd_fir_date"></span></div>
+        <div>विवेचना प्रकार: <span id="cd_inv_type"></span> दिवसीय</div>
+        <div>आरोप पत्र: <span id="cd_chargesheet"></span></div>
+      </div>
+
+      <div id="updateFieldsSection">
+        <form id="updateForm" autocomplete="off">
+          <input type="hidden" id="update_fir_no" name="fir_no">
+          <input type="hidden" id="update_ps_name" name="ps_name">
+          <input type="hidden" name="action" value="update">
+
+          <label>नया विवेचक अधिकारी — English में (खाली छोड़ें अगर नहीं बदला)</label>
+          <input type="text" id="new_io_name" name="new_io_name" placeholder="New IO name">
+          <span class="error-text" id="newIoNameError">❌ कृपया केवल अंग्रेज़ी में लिखें</span>
+
+          <label>नया मोबाइल नंबर (खाली छोड़ें अगर नहीं बदला)</label>
+          <input type="tel" id="new_mobile" name="new_mobile" maxlength="10" placeholder="नया 10 अंक नंबर">
+
+          <div class="checkbox-row">
+            <input type="checkbox" id="chargesheet_filed_check">
+            <label>आरोप पत्र (Chargesheet) दाखिल हो गया है</label>
+          </div>
+          <input type="hidden" id="chargesheet_filed_hidden" name="chargesheet_filed" value="">
+
+          <div class="checkbox-row">
+            <input type="checkbox" id="transfer_check" onchange="toggleTransferField()">
+            <label>यह मुकदमा दूसरे थाने ट्रांसफर हुआ है</label>
+          </div>
+          <input type="hidden" id="transfer_hidden" name="transfer_ps" value="">
+
+          <div id="newPsSection" style="display:none;">
+            <label>नया थाना चुनें</label>
+            <select id="new_ps_name" name="new_ps_name"></select>
+          </div>
+
+          <label>PIN (सुपरवाइज़र द्वारा प्राप्त करें) <span class="required">*</span></label>
+          <input type="password" id="update_pin" name="pin" required maxlength="6" placeholder="4-6 अंक का PIN">
+
+          <button type="submit" class="btn" id="updateSubmitBtn">✏️ Update Karein</button>
+          <div class="message success" id="updateSuccessMsg">✅ Record update ho gaya!</div>
+          <div class="message failure" id="updateFailureMsg"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <footer>CCTNS Muzaffarnagar &middot; Data Entry Form v2</footer>
+</div>
+
+<iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
+
+<script>
+// ====== YAHAN APNA APPS SCRIPT WEB APP URL DAALEN ======
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkj3wYkfU6HMak71DsUeTXQZP8KmGpU4wNfLrCCbTCiVDfkIhGBq0l45q4wdR72Ca4Qw/exec";
+// ========================================================
+
+// ================= VALIDATION HELPERS (naya jodela hissa) =================
+// FIR No. format: sankhya/varsh, jaise 182/2026
+function isValidFirNo(value) {
+  return /^\d{1,5}\/\d{4}$/.test(value.trim());
+}
+
+// Sirf English letters, numbers, aur common punctuation allowed
+function isEnglishOnly(value) {
+  return /^[A-Za-z0-9\s.,\-\/()]*$/.test(value);
+}
+
+// Real-time English-only enforcement kisi bhi text input par
+function attachEnglishOnlyValidation(inputEl, errorEl) {
+  inputEl.addEventListener('input', () => {
+    if (inputEl.value !== '' && !isEnglishOnly(inputEl.value)) {
+      inputEl.classList.add('input-invalid');
+      errorEl.style.display = 'block';
+    } else {
+      inputEl.classList.remove('input-invalid');
+      errorEl.style.display = 'none';
+    }
+  });
+}
+
+// Real-time FIR No. format check
+function attachFirNoValidation(inputEl, errorEl) {
+  inputEl.addEventListener('input', () => {
+    if (inputEl.value !== '' && !isValidFirNo(inputEl.value)) {
+      inputEl.classList.add('input-invalid');
+      errorEl.style.display = 'block';
+    } else {
+      inputEl.classList.remove('input-invalid');
+      errorEl.style.display = 'none';
+    }
+  });
+}
+// ============================================================================
+
+const PS_NAMES = [
+  "MAHILA THANA", "BHORA KALAN", "BHOPA", "BUDHANA", "CHHAPAR", "CHARTHAWAL",
+  "CIVIL LINES", "JANSATH", "KHATAULI", "KOTWALI NAGAR", "KAKRAULI",
+  "MANSOORPUR", "MIRAPUR", "NAI MANDI", "PHUGANA", "PURKAJI", "RAMRAJ",
+  "RATANPURI", "SIKHERA", "SHAHPUR", "TITAWI", "ANTI-HUMAN TRAFFICKING UNIT",
+  "Mahila Police Paramarsh Kendra Budhana", "KHALAPAR", "CYBER CRIME PS MUZAFFARNAGAR"
+];
+
+function populatePsDropdowns() {
+  const selects = [
+    document.getElementById('add_ps_name'),
+    document.getElementById('search_ps_name'),
+    document.getElementById('new_ps_name')
+  ];
+  selects.forEach(sel => {
+    const placeholder = document.createElement('option');
+    placeholder.value = "";
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    placeholder.textContent = "चुनें...";
+    sel.appendChild(placeholder);
+    PS_NAMES.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      sel.appendChild(opt);
+    });
+  });
+}
+populatePsDropdowns();
+
+function switchTab(tab) {
+  document.getElementById('tabAdd').classList.toggle('active', tab === 'add');
+  document.getElementById('tabUpdate').classList.toggle('active', tab === 'update');
+  document.getElementById('tabAddBtn').classList.toggle('active', tab === 'add');
+  document.getElementById('tabUpdateBtn').classList.toggle('active', tab === 'update');
+}
+
+function toggleTransferField() {
+  const checked = document.getElementById('transfer_check').checked;
+  document.getElementById('newPsSection').style.display = checked ? 'block' : 'none';
+  document.getElementById('transfer_hidden').value = checked ? 'Y' : '';
+}
+
+// ===================== TAB 1: ADD FORM =====================
+const addForm = document.getElementById('addForm');
+addForm.setAttribute('action', APPS_SCRIPT_URL);
+addForm.setAttribute('method', 'POST');
+addForm.setAttribute('target', 'hidden_iframe');
+
+const addMobileInput = document.getElementById('add_mobile');
+const addMobileError = document.getElementById('addMobileError');
+const addSubmitBtn = document.getElementById('addSubmitBtn');
+const addSuccessMsg = document.getElementById('addSuccessMsg');
+const addFailureMsg = document.getElementById('addFailureMsg');
+const addDatePicker = document.getElementById('add_fir_date_picker');
+const addHiddenDate = document.getElementById('add_fir_date');
+const iframe = document.getElementById('hidden_iframe');
+
+// naye validation ke elements
+const addIoNameInput = document.getElementById('add_io_name');
+const addIoNameError = document.getElementById('addIoNameError');
+const addFirNoInput = document.getElementById('add_fir_no');
+const addFirNoError = document.getElementById('addFirNoError');
+
+attachEnglishOnlyValidation(addIoNameInput, addIoNameError);
+attachFirNoValidation(addFirNoInput, addFirNoError);
+
+addMobileInput.addEventListener('input', () => {
+  addMobileInput.value = addMobileInput.value.replace(/\D/g, '').slice(0, 10);
+});
+
+function formatDateToDDMMYYYY(isoDate) {
+  const [y, m, d] = isoDate.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+let activeIframeAction = null; // 'add' ya 'update' - batata hai konsa form submit hua
+
+iframe.addEventListener('load', () => {
+  if (activeIframeAction === 'add') {
+    activeIframeAction = null;
+    addSuccessMsg.style.display = 'block';
+    addForm.reset();
+    addSubmitBtn.disabled = false;
+    addSubmitBtn.innerText = "✅ Submit Entry";
+  } else if (activeIframeAction === 'update') {
+    activeIframeAction = null;
+    updateSuccessMsg.style.display = 'block';
+    updateForm.reset();
+    document.getElementById('currentDataBox').style.display = 'none';
+    document.getElementById('updateFieldsSection').style.display = 'none';
+    updateSubmitBtn.disabled = false;
+    updateSubmitBtn.innerText = "✏️ Update Karein";
+  }
+});
+
+addForm.addEventListener('submit', (e) => {
+  addSuccessMsg.style.display = 'none';
+  addFailureMsg.style.display = 'none';
+  addMobileError.style.display = 'none';
+
+  const mobile = addMobileInput.value.trim();
+  if (!/^[6-9]\d{9}$/.test(mobile)) {
+    e.preventDefault();
+    addMobileError.style.display = 'block';
+    addMobileInput.focus();
+    return;
+  }
+
+  const psName = document.getElementById('add_ps_name').value;
+  const ioName = addIoNameInput.value.trim();
+  const firNo = addFirNoInput.value.trim();
+  const firDateRaw = addDatePicker.value;
+  const invType = document.getElementById('add_inv_type').value;
+
+  if (!psName || !ioName || !firNo || !firDateRaw || !invType) {
+    e.preventDefault();
+    addFailureMsg.innerText = "⚠️ Kripya saare zaroori fields bharen.";
+    addFailureMsg.style.display = 'block';
+    return;
+  }
+
+  // ===== NAYA CHECK: IO Name English mein hi ho =====
+  if (!isEnglishOnly(ioName)) {
+    e.preventDefault();
+    addIoNameInput.classList.add('input-invalid');
+    addIoNameError.style.display = 'block';
+    addIoNameInput.focus();
+    return;
+  }
+
+  // ===== NAYA CHECK: FIR No. sahi format mein ho =====
+  if (!isValidFirNo(firNo)) {
+    e.preventDefault();
+    addFirNoInput.classList.add('input-invalid');
+    addFirNoError.style.display = 'block';
+    addFirNoInput.focus();
+    return;
+  }
+
+  addHiddenDate.value = formatDateToDDMMYYYY(firDateRaw);
+  activeIframeAction = 'add';
+  addSubmitBtn.disabled = true;
+  addSubmitBtn.innerText = "Submitting...";
+});
+
+// ===================== TAB 2: SEARCH =====================
+let lastSearchedData = null;
+
+const searchFirNoInput = document.getElementById('search_fir_no');
+const searchFirNoError = document.getElementById('searchFirNoError');
+attachFirNoValidation(searchFirNoInput, searchFirNoError);
+
+function searchRecord() {
+  const firNo = searchFirNoInput.value.trim();
+  const psName = document.getElementById('search_ps_name').value;
+  const searchFailureMsg = document.getElementById('searchFailureMsg');
+  searchFailureMsg.style.display = 'none';
+  document.getElementById('currentDataBox').style.display = 'none';
+  document.getElementById('updateFieldsSection').style.display = 'none';
+
+  if (!firNo || !psName) {
+    searchFailureMsg.innerText = "⚠️ FIR_No aur PS_Name dono select/likhen.";
+    searchFailureMsg.style.display = 'block';
+    return;
+  }
+
+  // ===== NAYA CHECK: search se pehle bhi FIR No. format check =====
+  if (!isValidFirNo(firNo)) {
+    searchFirNoInput.classList.add('input-invalid');
+    searchFirNoError.style.display = 'block';
+    searchFirNoInput.focus();
+    return;
+  }
+
+  const callbackName = 'cctnsSearchCallback_' + Date.now();
+  window[callbackName] = function(result) {
+    delete window[callbackName];
+    document.body.removeChild(script);
+
+    if (!result.success) {
+      searchFailureMsg.innerText = "❌ " + result.message;
+      searchFailureMsg.style.display = 'block';
+      return;
+    }
+
+    lastSearchedData = result.data;
+    document.getElementById('cd_io_name').innerText = result.data.io_name;
+    document.getElementById('cd_mobile').innerText = result.data.mobile;
+    document.getElementById('cd_fir_date').innerText = result.data.fir_date;
+    document.getElementById('cd_inv_type').innerText = result.data.inv_type;
+    document.getElementById('cd_chargesheet').innerText = result.data.chargesheet_filed === 'Y' ? 'दाखिल हो गया' : 'अभी नहीं';
+
+    document.getElementById('update_fir_no').value = result.data.fir_no;
+    document.getElementById('update_ps_name').value = result.data.ps_name;
+    document.getElementById('chargesheet_filed_check').checked = (result.data.chargesheet_filed === 'Y');
+
+    document.getElementById('currentDataBox').style.display = 'block';
+    document.getElementById('updateFieldsSection').style.display = 'block';
+  };
+
+  const url = `${APPS_SCRIPT_URL}?action=search&fir_no=${encodeURIComponent(firNo)}&ps_name=${encodeURIComponent(psName)}&callback=${callbackName}`;
+  const script = document.createElement('script');
+  script.src = url;
+  script.onerror = () => {
+    searchFailureMsg.innerText = "❌ Server se connect nahi ho paya.";
+    searchFailureMsg.style.display = 'block';
+  };
+  document.body.appendChild(script);
+}
+
+// ===================== TAB 2: UPDATE FORM =====================
+const updateForm = document.getElementById('updateForm');
+updateForm.setAttribute('action', APPS_SCRIPT_URL);
+updateForm.setAttribute('method', 'POST');
+updateForm.setAttribute('target', 'hidden_iframe');
+
+const updateSubmitBtn = document.getElementById('updateSubmitBtn');
+const updateSuccessMsg = document.getElementById('updateSuccessMsg');
+const updateFailureMsg = document.getElementById('updateFailureMsg');
+
+// naye validation ke elements
+const newIoNameInput = document.getElementById('new_io_name');
+const newIoNameError = document.getElementById('newIoNameError');
+attachEnglishOnlyValidation(newIoNameInput, newIoNameError);
+
+document.getElementById('chargesheet_filed_check').addEventListener('change', (e) => {
+  document.getElementById('chargesheet_filed_hidden').value = e.target.checked ? 'Y' : '';
+});
+
+updateForm.addEventListener('submit', (e) => {
+  updateSuccessMsg.style.display = 'none';
+  updateFailureMsg.style.display = 'none';
+
+  const pin = document.getElementById('update_pin').value.trim();
+  if (!pin) {
+    e.preventDefault();
+    updateFailureMsg.innerText = "⚠️ PIN daalna zaroori hai.";
+    updateFailureMsg.style.display = 'block';
+    return;
+  }
+
+  const newMobile = document.getElementById('new_mobile').value.trim();
+  if (newMobile && !/^[6-9]\d{9}$/.test(newMobile)) {
+    e.preventDefault();
+    updateFailureMsg.innerText = "⚠️ Naya mobile number sahi format mein nahi hai.";
+    updateFailureMsg.style.display = 'block';
+    return;
+  }
+
+  // ===== NAYA CHECK: naya IO name diya ho to English mein ho =====
+  const newIoName = newIoNameInput.value.trim();
+  if (newIoName && !isEnglishOnly(newIoName)) {
+    e.preventDefault();
+    newIoNameInput.classList.add('input-invalid');
+    newIoNameError.style.display = 'block';
+    newIoNameInput.focus();
+    return;
+  }
+
+  if (document.getElementById('transfer_check').checked && !document.getElementById('new_ps_name').value) {
+    e.preventDefault();
+    updateFailureMsg.innerText = "⚠️ Transfer ke liye naya thana select karein.";
+    updateFailureMsg.style.display = 'block';
+    return;
+  }
+
+  activeIframeAction = 'update';
+  updateSubmitBtn.disabled = true;
+  updateSubmitBtn.innerText = "Updating...";
+});
+</script>
+</body>
+</html>
