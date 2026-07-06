@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCTNS 60/90 Investigation Alert System — Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f4f1e8;
+    color: #1a1a1a;
+    min-height: 100vh;
+  }
+  header {
+    background: #8b0000; color: white; padding: 16px 20px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  header img { width: 44px; height: auto; }
+  header h1 { font-size: 18px; }
+  header .sub { font-size: 11px; color: #f5d7d7; margin-top: 2px; }
+  .gold-line { height: 3px; background: linear-gradient(90deg, #8b0000, #d4af37, #1a3a6b); }
+
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    padding: 14px 20px; background: #fff; border-bottom: 1px solid #e0dccb;
+  }
+  .toolbar input, .toolbar select {
+    padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px;
+  }
+  .btn {
+    padding: 9px 16px; border-radius: 6px; border: none; background: #1a3a6b;
+    color: white; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .summary-cards { display: flex; gap: 10px; padding: 14px 20px; flex-wrap: wrap; }
+  .card {
+    background: white; border-radius: 10px; padding: 14px 20px; min-width: 130px;
+    border-left: 5px solid #1a3a6b; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .card.overdue { border-left-color: #b71c1c; }
+  .card.approaching { border-left-color: #f9a825; }
+  .card .num { font-size: 24px; font-weight: 700; }
+  .card .label { font-size: 11px; color: #666; }
+
+  table { width: 100%; border-collapse: collapse; background: white; }
+  thead th {
+    background: #1a3a6b; color: white; padding: 10px 8px; font-size: 12px;
+    text-align: center; position: sticky; top: 0;
+  }
+  tbody td { padding: 8px; font-size: 12px; text-align: center; border-bottom: 1px solid #eee; }
+  tbody tr.OVERDUE { background: #ffebee; }
+  tbody tr.Approaching { background: #fff8e1; }
+  tbody tr.OK { background: #f1f8f4; }
+  tbody tr.Chargesheet { background: #f0f0f0; color: #888; }
+
+  .table-wrap { margin: 0 20px 20px; overflow-x: auto; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); max-height: 65vh; overflow-y: auto; }
+
+  #loadingMsg, #errorMsg { text-align: center; padding: 40px; color: #666; }
+  #errorMsg { color: #b71c1c; display: none; }
+
+  footer { text-align: center; padding: 16px; font-size: 11px; color: #888; }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="up_police_logo.png" alt="UP Police" onerror="this.style.display='none'">
+  <div>
+    <h1>CCTNS 60/90 Investigation Alert System</h1>
+    <div class="sub">जनपद मुजफ्फरनगर पुलिस — Live Dashboard (View Only)</div>
+  </div>
+</header>
+<div class="gold-line"></div>
+
+<div class="toolbar">
+  <input type="text" id="searchBox" placeholder="🔍 PS_Name / IO_Name / FIR_No खोजें..." style="flex:1; min-width:200px;">
+  <select id="statusFilter">
+    <option value="">सभी Status</option>
+    <option value="OVERDUE">🛑 Overdue</option>
+    <option value="Approaching">⚠️ Approaching</option>
+    <option value="OK">✅ OK</option>
+    <option value="Chargesheet">✔️ Chargesheet Filed</option>
+  </select>
+  <button class="btn" onclick="loadData()">🔄 Refresh</button>
+</div>
+
+<div class="summary-cards" id="summaryCards"></div>
+
+<div id="loadingMsg">डेटा लोड हो रहा है...</div>
+<div id="errorMsg"></div>
+
+<div class="table-wrap" id="tableWrap" style="display:none;">
+  <table>
+    <thead>
+      <tr>
+        <th>थाना</th><th>विवेचक</th><th>FIR No.</th><th>FIR Date</th>
+        <th>प्रकार</th><th>मोबाइल</th><th>बीते दिन</th><th>शेष दिन</th><th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<footer>CCTNS Muzaffarnagar &middot; Read-only Dashboard &middot; SMS भेजने का कार्य केवल कार्यालय से होता है</footer>
+
+<script>
+// ====== APNI GOOGLE SHEET CSV URL YAHAN DAALEN ======
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/17bzg8QuDtC69qk9Jty53Tz2wvlY_LYIq2Y_Qq6NK5Xw/export?format=csv&gid=0";
+// =====================================================
+
+let allRows = [];
+
+function parseCSV(text) {
+  // Simple CSV parser jo quoted commas bhi handle karta hai
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (field !== '' || row.length > 0) { row.push(field); rows.push(row); row = []; field = ''; }
+        if (c === '\r' && text[i + 1] === '\n') i++;
+      } else field += c;
+    }
+  }
+  if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+function daysElapsed(dateStr) {
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return null;
+  const firDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  firDate.setHours(0,0,0,0);
+  return Math.round((today - firDate) / 86400000);
+}
+
+async function loadData() {
+  document.getElementById('loadingMsg').style.display = 'block';
+  document.getElementById('errorMsg').style.display = 'none';
+  document.getElementById('tableWrap').style.display = 'none';
+
+  try {
+    const res = await fetch(SHEET_CSV_URL + '&_=' + Date.now());
+    if (!res.ok) throw new Error('Sheet download fail: ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    const header = rows[0].map(h => h.trim());
+
+    const idx = {
+      ps: header.indexOf('PS_Name'), io: header.indexOf('IO_Name'),
+      fir: header.indexOf('FIR_No'), date: header.indexOf('FIR_Date'),
+      inv: header.indexOf('Inv_Type'), mobile: header.indexOf('Mobile'),
+      cs: header.indexOf('Chargesheet_Filed')
+    };
+
+    allRows = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r[idx.ps] || !r[idx.fir]) continue;
+
+      const invType = parseInt((r[idx.inv] || '').replace(/\D/g, ''));
+      if (invType !== 60 && invType !== 90) continue;
+
+      const elapsed = daysElapsed((r[idx.date] || '').trim());
+      if (elapsed === null) continue;
+
+      const chargesheet = (r[idx.cs] || '').trim().toUpperCase() === 'Y';
+      const daysLeft = invType - elapsed;
+
+      let status = 'OK';
+      if (chargesheet) status = 'Chargesheet';
+      else if (elapsed > invType) status = 'OVERDUE';
+      else if (daysLeft <= 5) status = 'Approaching';
+
+      allRows.push({
+        ps: r[idx.ps], io: r[idx.io], fir: r[idx.fir], date: r[idx.date],
+        inv: invType, mobile: r[idx.mobile] || '-', elapsed, daysLeft, status
+      });
+    }
+
+    renderTable();
+    document.getElementById('loadingMsg').style.display = 'none';
+    document.getElementById('tableWrap').style.display = 'block';
+  } catch (err) {
+    document.getElementById('loadingMsg').style.display = 'none';
+    document.getElementById('errorMsg').innerText = '❌ Data load nahi ho paya: ' + err.message;
+    document.getElementById('errorMsg').style.display = 'block';
+  }
+}
+
+function renderTable() {
+  const search = document.getElementById('searchBox').value.trim().toLowerCase();
+  const filter = document.getElementById('statusFilter').value;
+
+  const filtered = allRows.filter(r => {
+    const matchSearch = !search ||
+      r.ps.toLowerCase().includes(search) || r.io.toLowerCase().includes(search) || r.fir.toLowerCase().includes(search);
+    const matchStatus = !filter || r.status === filter;
+    return matchSearch && matchStatus;
+  });
+
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  const statusLabel = { OVERDUE: '🛑 Overdue', Approaching: '⚠️ Approaching', OK: '✅ OK', Chargesheet: '✔️ Chargesheet Filed' };
+
+  filtered.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.className = r.status;
+    tr.innerHTML = `<td>${r.ps}</td><td>${r.io}</td><td>${r.fir}</td><td>${r.date}</td>
+      <td>${r.inv} दिन</td><td>${r.mobile}</td><td>${r.elapsed}</td>
+      <td>${r.daysLeft}</td><td>${statusLabel[r.status]}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  const overdue = allRows.filter(r => r.status === 'OVERDUE').length;
+  const approaching = allRows.filter(r => r.status === 'Approaching').length;
+  document.getElementById('summaryCards').innerHTML = `
+    <div class="card"><div class="num">${allRows.length}</div><div class="label">कुल मुकदमे</div></div>
+    <div class="card overdue"><div class="num">${overdue}</div><div class="label">🛑 Overdue</div></div>
+    <div class="card approaching"><div class="num">${approaching}</div><div class="label">⚠️ Approaching (5 दिन या कम)</div></div>
+  `;
+}
+
+document.getElementById('searchBox').addEventListener('input', renderTable);
+document.getElementById('statusFilter').addEventListener('change', renderTable);
+
+loadData();
+</script>
+</body>
+</html>
